@@ -1,0 +1,77 @@
+simple:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 1024
+
+simple_json:
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 1024
+
+primary_agent:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+assistant:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+generator:
+  temperature: 0.3
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+refiner:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+adviser:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+reflector:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 1024
+
+searcher:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+enricher:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 1024
+
+coder:
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+installer:
+  temperature: 0.1
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048
+
+pentester:
+  temperature: 0.2
+  top_p: 0.9
+  n: 1
+  max_tokens: 2048

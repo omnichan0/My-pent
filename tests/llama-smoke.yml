@@ -1,0 +1,26 @@
+- id: "llama_cpp_tool_call"
+  name: "llama.cpp tool call"
+  type: "tool"
+  group: "basic"
+  params:
+    max_tokens: 128
+    temperature: 0
+  messages:
+    - role: "system"
+      content: "You must use the provided function. Do not answer in prose."
+    - role: "user"
+      content: "Call ping with message set to ready."
+  tools:
+    - name: "ping"
+      description: "Return a status message."
+      parameters:
+        type: "object"
+        properties:
+          message:
+            type: "string"
+        required: ["message"]
+  expected:
+    - function_name: "ping"
+      arguments:
+        message: "ready"
+  streaming: false
