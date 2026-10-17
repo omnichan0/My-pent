@@ -60,6 +60,7 @@
     ],
     "win": {
       "icon": "assets/pentagi-icon.ico",
+      "artifactName": "${productName}-${version}-${arch}-setup.${ext}",
       "target": [
         "nsis"
       ]

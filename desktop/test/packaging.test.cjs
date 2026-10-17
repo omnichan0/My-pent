@@ -7,6 +7,11 @@ const root = path.resolve(__dirname, "..");
 const manifest = require("../package.json");
 
 test("Windows installer creates shortcuts and launches the app after installation", () => {
+  assert.deepEqual(manifest.build.win.target, ["nsis"]);
+  assert.equal(
+    manifest.build.win.artifactName,
+    "${productName}-${version}-${arch}-setup.${ext}",
+  );
   assert.equal(manifest.build.nsis.oneClick, false);
   assert.equal(manifest.build.nsis.createDesktopShortcut, true);
   assert.equal(manifest.build.nsis.createStartMenuShortcut, true);

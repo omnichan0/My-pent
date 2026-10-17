@@ -95,8 +95,10 @@ npm start
 ```
 
 Create a platform installer with `npm run dist`. Windows, macOS, and Linux
-packages are built on their matching operating systems and published from
-`desktop-v*` Git tags.
+packages are built on their matching operating systems. Each push to `main`
+builds the Windows `.exe`; download it from that run's **Actions → Artifacts**
+as `pentagi-local-windows`. To publish installers for all platforms on the
+Releases page, create and push a `desktop-v*` tag.
 
 The first-run login is `admin@pentagi.com` with password `admin`; change it
 immediately.
