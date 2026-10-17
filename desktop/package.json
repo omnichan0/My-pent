@@ -1,6 +1,6 @@
 {
   "name": "pentagi-local-desktop",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Desktop setup and controls for PentAGI with local llama.cpp models",
   "author": "omnichan0",
   "homepage": "https://github.com/omnichan0/My-pent",

@@ -21,6 +21,14 @@ for full setup instructions and troubleshooting.
 - **Full Kali suite:** adds the `kali-linux-everything` metapackage. This is a
   very large image; the app enables it only at 32 GB RAM and 100 GB free disk.
 
+### Approved tool installs
+
+When a task needs a tool that is not already available, PentAGI can present the
+tool, source, installation commands, and expected changes for your approval
+before installing it inside the worker. Approved tools are saved to a private,
+reusable local worker image for later tasks. This supports third-party tools as
+well as Kali packages; installs are not silently approved.
+
 PentAGI is built for penetration testing and authorized security assessments.
 Its power depends on the tools, target scope, and the quality of instructions
 given to the AI; AI suggestions must be reviewed and findings independently
