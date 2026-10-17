@@ -1,40 +1,43 @@
 const { createHash } = require("node:crypto");
 
 const KALI_BASE = "vxcontrol/kali-linux:latest";
+const SYSTEMD_KALI_IMAGE = "vxcontrol/kali-linux:systemd";
 const FULL_KALI_IMAGE = "pentagi-local/kali-tools:full";
+const STANDARD_RAM_GIB = 16;
+const STANDARD_DISK_GIB = 40;
 const FULL_KALI_RAM_GIB = 32;
 const FULL_KALI_DISK_GIB = 100;
 
 const TOOL_CATALOG = Object.freeze({
-  nmap: { label: "Nmap", description: "Network discovery and port scanning" },
-  sqlmap: { label: "SQLmap", description: "SQL injection testing" },
-  nikto: { label: "Nikto", description: "Web server checks" },
-  gobuster: { label: "Gobuster", description: "Directory and DNS discovery" },
-  hydra: { label: "Hydra", description: "Authorized login auditing" },
-  john: { label: "John the Ripper", description: "Password hash auditing" },
-  amass: { label: "Amass", description: "Attack surface mapping" },
-  tshark: { label: "TShark", description: "Network protocol analysis tools" },
+  dnsenum: { label: "dnsenum", description: "DNS enumeration" },
+  "enum4linux-ng": { label: "enum4linux-ng", description: "Windows and SMB enumeration" },
+  "testssl.sh": { label: "testssl.sh", description: "TLS/SSL configuration checks" },
+  "net-snmp": { label: "Net-SNMP", description: "SNMP discovery and queries" },
+  "recon-ng": { label: "Recon-ng", description: "Modular reconnaissance framework" },
+  zmap: { label: "ZMap", description: "Network measurement and scanning" },
 });
 
 function resourceGuidance(memoryGiB, freeDiskGiB) {
+  const standardRecommended = memoryGiB >= STANDARD_RAM_GIB && freeDiskGiB >= STANDARD_DISK_GIB;
   const fullSuiteAvailable = memoryGiB >= FULL_KALI_RAM_GIB && freeDiskGiB >= FULL_KALI_DISK_GIB;
-  const standardAvailable = memoryGiB >= 16 && freeDiskGiB >= 40;
   return {
+    standardRecommended,
     fullSuiteAvailable,
-    recommended: fullSuiteAvailable
-      ? "standard"
-      : standardAvailable
-        ? "standard"
-        : "base",
+    recommendedProfile: "base",
     message: fullSuiteAvailable
       ? `Full Kali is available on this computer (at least ${FULL_KALI_RAM_GIB} GB RAM and ${FULL_KALI_DISK_GIB} GB free disk estimated). It can use substantially more storage while building and updating.`
-      : `Use the standard worker image or selected tools. Full Kali is gated until this computer reports at least ${FULL_KALI_RAM_GIB} GB RAM and ${FULL_KALI_DISK_GIB} GB free disk.`,
+      : standardRecommended
+        ? `Standard setup is recommended (at least ${STANDARD_RAM_GIB} GB RAM and ${STANDARD_DISK_GIB} GB free disk). Selected tools are added to the same roughly 6 GB upstream worker image; the lightweight "test" image is not a usable pentest worker.`
+        : `This computer is below the recommended ${STANDARD_RAM_GIB} GB RAM / ${STANDARD_DISK_GIB} GB free-disk baseline. The selected-tools option adds fewer packages but still needs the roughly 6 GB upstream worker image. Full Kali is unavailable.`,
   };
 }
 
 function toolsetPlan(profile, selectedTools, memoryGiB, freeDiskGiB) {
   if (profile === "base") {
     return { image: KALI_BASE, pull: true, packages: [] };
+  }
+  if (profile === "systemd") {
+    return { image: SYSTEMD_KALI_IMAGE, pull: true, packages: [] };
   }
   if (profile === "full") {
     const resources = resourceGuidance(memoryGiB, freeDiskGiB);
@@ -85,6 +88,9 @@ module.exports = {
   FULL_KALI_IMAGE,
   FULL_KALI_RAM_GIB,
   KALI_BASE,
+  SYSTEMD_KALI_IMAGE,
+  STANDARD_DISK_GIB,
+  STANDARD_RAM_GIB,
   TOOL_CATALOG,
   dockerfileForPackages,
   resourceGuidance,

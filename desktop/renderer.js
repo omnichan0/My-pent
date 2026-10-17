@@ -39,7 +39,7 @@ function selectedToolset() {
   };
 }
 
-async function action(name, toolset) {
+async function action(name, toolset, updateToolset = false) {
   if (busy) return;
   if (name === "start" && toolset?.profile === "full" &&
       !window.confirm("The full Kali suite is very large and can use tens of gigabytes of Docker storage. Build and activate it?")) {
@@ -52,13 +52,13 @@ async function action(name, toolset) {
   setBusy(true);
   setStatus(name === "start" ? "Preparing workspace..." : `${name}...`);
   append(`\n> ${name}\n`);
-  const request = name === "start" ? { action: name, toolset } : name;
+  const request = name === "start" ? { action: name, toolset, updateToolset } : name;
   try {
     const result = await window.pentagiDesktop.action(request);
     if (result.ok) {
       if (name === "status" || name === "logs") setStatus("Command complete");
       if (name === "start") {
-        append("\nSetup checks passed. Opening PentAGI in your browser...\n");
+        append("\nSetup checks passed. Opening PentAGI in its app window...\n");
       }
     } else {
       setStatus("Action failed", "error");
@@ -72,14 +72,15 @@ async function action(name, toolset) {
   }
 }
 
-document.getElementById("start").addEventListener("click", () => action("start"));
-document.getElementById("apply-toolset").addEventListener("click", () => action("start", selectedToolset()));
+document.getElementById("start").addEventListener("click", () => action("start", selectedToolset()));
+document.getElementById("apply-toolset").addEventListener("click", () => action("start", selectedToolset(), true));
 document.getElementById("stop").addEventListener("click", () => action("stop"));
 document.getElementById("status").addEventListener("click", () => action("status"));
 document.getElementById("logs").addEventListener("click", () => action("logs"));
 document.getElementById("open").addEventListener("click", () => window.pentagiDesktop.openApp());
 document.getElementById("docker-install").addEventListener("click", () => window.pentagiDesktop.openDockerInstall());
 document.getElementById("docker-startup").addEventListener("click", () => window.pentagiDesktop.openDockerStartup());
+document.getElementById("tool-inventory").addEventListener("click", () => window.pentagiDesktop.openToolInventory());
 document.getElementById("clear").addEventListener("click", () => {
   consoleView.textContent = "";
 });
@@ -88,7 +89,7 @@ const fullOption = document.querySelector('input[name="profile"][value="full"]')
 const fullLabel = document.getElementById("full-profile");
 const resourceText = document.getElementById("resource-guidance");
 window.pentagiDesktop.resources().then((resources) => {
-  resourceText.textContent = `${resources.memoryGiB} GB RAM • ${resources.freeDiskGiB} GB free on the app's data drive. ${resources.message}`;
+  resourceText.textContent = `${resources.cpuCount} logical CPUs • ${resources.memoryGiB} GB RAM • ${resources.freeDiskGiB} GB free on the app's data drive. ${resources.message} Docker Desktop storage is estimated separately by Docker.`;
   fullOption.disabled = !resources.fullSuiteAvailable;
   fullLabel.classList.toggle("disabled", fullOption.disabled);
 }).catch((error) => {

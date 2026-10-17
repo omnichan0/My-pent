@@ -12,9 +12,9 @@ One quick start for the app, model, embeddings, database, and dependencies.
 
 </div>
 
-Run PentAGI with a local llama.cpp model on Windows, macOS, or Linux. The
-desktop app handles setup, startup, health tests, and service controls in a
-window; you do not need to use a terminal to operate the app.
+Run PentAGI with a local llama.cpp model on Windows, macOS, or Linux. End users
+install the platform app, open its desktop shortcut, choose a worker profile,
+and complete setup in the app. They do not need Node.js, npm, or a terminal.
 
 > **Upstream architecture preserved.** This repository adds a bootstrap layer
 > and a Compose override for llama.cpp; upstream source and model weights are
@@ -45,30 +45,43 @@ window; you do not need to use a terminal to operate the app.
 
 ## Install and start the desktop app
 
-Download the latest **PentAGI Local** installer from this repository's
+Download the platform installer for **PentAGI Local** from this repository's
 [Releases](https://github.com/omnichan0/My-pent/releases) page and install it.
-Open **PentAGI Local** from the desktop or applications menu:
+On Windows, the installer creates a desktop and Start-menu shortcut and opens
+PentAGI Local when installation finishes. On macOS/Linux, move or install the
+app using the platform's normal installer flow. The Linux `.deb` package adds
+PentAGI Local to the applications menu; the AppImage is a portable
+alternative. Open **PentAGI Local** from the desktop shortcut or applications
+menu:
 
-- On first launch, select **Set up & start**. The app clones the pinned
+- On first launch, the app checks available RAM and disk space, then lets you
+  choose the maintained worker, a custom selection of extra tools, or the full
+  Kali suite when the conservative resource threshold is met. The selected
+  worker image is prepared and reused by later PentAGI tasks.
+- Select **Install selected setup & start**. The app clones the pinned
   PentAGI source, downloads and checksum-verifies the selected chat and
   embedding models, generates private local credentials, starts the services,
-  runs the tool-call and embedding/database tests, and opens PentAGI in your
-  browser after the tests pass.
+  runs the tool-call and embedding/database tests, and opens PentAGI in its own
+  desktop window after the tests pass. Keep the app open while first-run
+  downloads and checks complete.
 - On later launches, the app starts the prepared services and opens PentAGI.
   Enable **Open PentAGI Local when I sign in** in the app if you want the
   desktop app to launch automatically at sign-in. Docker must also be set to
   start with the operating system.
 - The app window includes **Open PentAGI**, **Refresh status**, **View logs**,
   and **Stop services** controls. You do not need a terminal to manage it.
-- Choose the maintained Kali worker image, build a reusable custom worker image
-  from selected tools, or build Kali's full tool metapackage when the app's
-  conservative resource check sees at least 32 GB RAM and 100 GB free disk.
-  These images are stored in Docker, not installed on the host. The full
-  metapackage can take substantially more disk space; Docker Desktop's virtual
-  disk capacity can differ from the host free-space estimate.
+- Choose the maintained lean curated Kali image (200+ tools), its systemd
+  variant, selected extra Kali packages, or the full Kali metapackage when the
+  app's conservative resource check sees at least 32 GB RAM and 100 GB free
+  disk. The curated/custom choices use the same roughly 6 GB upstream worker
+  base; add-on selections do not avoid downloading it. These images are stored
+  in Docker, not installed on the host. The full metapackage can take
+  substantially more disk space; Docker Desktop's virtual disk capacity can
+  differ from the host free-space estimate.
 - Windows and macOS may show an operating-system warning because release
   installers are not yet signed/notarized. Only install releases linked from
-  this repository.
+  this repository. The local model weights are downloaded and checksum-verified
+  during first setup rather than bundled into a multi-gigabyte installer.
 
 ### Build the desktop app from source
 
@@ -86,8 +99,7 @@ packages are built on their matching operating systems and published from
 `desktop-v*` Git tags.
 
 The first-run login is `admin@pentagi.com` with password `admin`; change it
-immediately. Because the local HTTPS certificate is self-signed, the browser
-may show a certificate warning on first access.
+immediately.
 
 The desktop app's **Stop services** control stops containers without deleting
 the runtime files or Docker volumes. The **View logs** control displays recent
@@ -111,10 +123,14 @@ data directory and are not included in Git or the app installer.
 ## Safety and licensing
 
 Use PentAGI only against systems you own or are explicitly authorized to test.
-PentAGI can execute security tools in worker containers. The standard
-deployment gives it access to the Docker API; Docker socket access is
+PentAGI can execute security tools in worker containers. Docker worker
+containers use normal Docker networking and can make outbound network
+connections; containerization does not mean the agent is offline. The standard
+deployment gives PentAGI access to the Docker API; Docker socket access is
 effectively host-level privilege, so use a dedicated or otherwise isolated
-machine and do not expose this local setup to the public internet.
+machine and do not expose this local setup to the public internet. USB devices
+are not automatically passed into containers; any future host-device
+integration should require a deliberate, per-device permission.
 
 The selected G9v3 model is described by its publisher as an abliterated,
 uncensored variant with reduced refusal behavior. That model behavior is a

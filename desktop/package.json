@@ -28,6 +28,7 @@
       "*.js",
       "*.html",
       "*.css",
+      "assets/*.svg",
       "test/*.cjs",
       "package.json"
     ],
@@ -58,6 +59,7 @@
       }
     ],
     "win": {
+      "icon": "assets/pentagi-icon.ico",
       "target": [
         "nsis"
       ]
@@ -65,9 +67,16 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "PentAGI Local",
+      "runAfterFinish": true,
+      "installerIcon": "assets/pentagi-icon.ico",
+      "uninstallerIcon": "assets/pentagi-icon.ico",
+      "deleteAppDataOnUninstall": false
     },
     "mac": {
+      "icon": "assets/pentagi-icon.icns",
       "target": [
         "dmg",
         "zip"
@@ -75,8 +84,12 @@
       "category": "public.app-category.developer-tools"
     },
     "linux": {
+      "icon": "assets/pentagi-icon.png",
+      "maintainer": "PentAGI Local Maintainers",
+      "packageCategory": "devel",
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb"
       ],
       "category": "Development",
       "syncDesktopName": true,

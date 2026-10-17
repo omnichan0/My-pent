@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("pentagiDesktop", {
   openApp: () => ipcRenderer.invoke("app:open"),
   openDockerInstall: () => ipcRenderer.invoke("app:open-docker-install"),
   openDockerStartup: () => ipcRenderer.invoke("app:open-docker-startup"),
+  openToolInventory: () => ipcRenderer.invoke("app:open-tool-inventory"),
   getLoginSetting: () => ipcRenderer.invoke("app:login-setting-state"),
   setLoginSetting: (enabled) => ipcRenderer.invoke("app:login-setting", enabled),
   onEvent: (listener) => {

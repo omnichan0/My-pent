@@ -7,12 +7,14 @@ const { dockerLinks, gitInstallPlan } = require("./system-setup.cjs");
 const { dockerfileForPackages, resourceGuidance, toolsetPlan } = require("./toolsets.cjs");
 
 const APP_URL = "https://localhost:8443";
+const APP_ORIGIN = new URL(APP_URL).origin;
 const LOGIN_SETTINGS_PATH = path.join(app.getPath("userData"), "login-settings.json");
 const RESOURCE_ROOT = app.isPackaged
   ? process.resourcesPath
   : path.resolve(__dirname, "..");
 const APP_DATA_ROOT = path.join(app.getPath("userData"), "setup");
 let mainWindow;
+let pentagiWindow;
 let activeProcess;
 let taskRunning = false;
 
@@ -216,12 +218,14 @@ async function runLauncher(action) {
 }
 
 function hostResources() {
+  fs.mkdirSync(APP_DATA_ROOT, { recursive: true });
   const memoryGiB = os.totalmem() / (1024 ** 3);
   const stats = fs.statfsSync(APP_DATA_ROOT);
   const freeDiskGiB = (stats.bavail * stats.bsize) / (1024 ** 3);
   return {
     memoryGiB: Math.floor(memoryGiB),
     freeDiskGiB: Math.floor(freeDiskGiB),
+    cpuCount: os.cpus().length,
     ...resourceGuidance(memoryGiB, freeDiskGiB),
   };
 }
@@ -243,21 +247,35 @@ function updatePentagiEnvironment(values) {
   fs.writeFileSync(envPath, `${lines.filter((line, index) => index < lines.length - 1 || line !== "").join("\n")}\n`, { mode: 0o600 });
 }
 
-async function installToolset(profile, tools = []) {
+async function installToolset(profile, tools = [], update = false) {
   const docker = commandPath("docker");
   if (!docker) throw new Error("Docker is not available.");
   const resources = hostResources();
   const plan = toolsetPlan(profile, tools, resources.memoryGiB, resources.freeDiskGiB);
-  emit("output", `Preparing reusable worker image ${plan.image}.\n`);
-  if (plan.pull) {
+  const imageCheck = spawnSync(docker, ["image", "inspect", plan.image], {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  if (imageCheck.error) throw imageCheck.error;
+  const imageExists = imageCheck.status === 0;
+  if (imageExists && !update) {
+    emit("output", `Reusing worker image ${plan.image}.\n`);
+  } else if (plan.pull) {
+    emit("output", `Downloading reusable worker image ${plan.image}.\n`);
     await run(docker, ["pull", plan.image]);
   } else {
+    emit("output", `${update ? "Updating" : "Building"} reusable worker image ${plan.image}.\n`);
     const context = path.join(APP_DATA_ROOT, "toolbox", profile);
     fs.mkdirSync(context, { recursive: true });
     const dockerfile = path.join(context, "Dockerfile");
     fs.writeFileSync(dockerfile, dockerfileForPackages(plan.packages), { mode: 0o600 });
     await run(docker, [
-      "build", "--pull", "--tag", plan.image, "--file", dockerfile, context,
+      "build",
+      "--pull",
+      ...(update ? ["--no-cache"] : []),
+      "--tag", plan.image,
+      "--file", dockerfile,
+      context,
     ], { cwd: context });
   }
   updatePentagiEnvironment({
@@ -266,7 +284,41 @@ async function installToolset(profile, tools = []) {
   });
 }
 
-async function runQuickStart(action, requestedToolset) {
+function openPentagiWindow() {
+  if (pentagiWindow && !pentagiWindow.isDestroyed()) {
+    pentagiWindow.focus();
+    return;
+  }
+  pentagiWindow = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    minWidth: 900,
+    minHeight: 640,
+    title: "PentAGI",
+    backgroundColor: "#100b12",
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  pentagiWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (new URL(url).origin !== APP_ORIGIN) shell.openExternal(url);
+    return { action: "deny" };
+  });
+  pentagiWindow.webContents.on("will-navigate", (event, url) => {
+    if (new URL(url).origin !== APP_ORIGIN) {
+      event.preventDefault();
+      shell.openExternal(url);
+    }
+  });
+  pentagiWindow.on("closed", () => {
+    pentagiWindow = null;
+  });
+  pentagiWindow.loadURL(APP_URL);
+}
+
+async function runQuickStart(action, requestedToolset, updateToolset = false) {
   copyBootstrapFiles();
   emit("state", `Running ${action}...`);
   if (action === "start") {
@@ -279,11 +331,12 @@ async function runQuickStart(action, requestedToolset) {
       await installToolset(
         requestedToolset?.profile || "base",
         requestedToolset?.tools || [],
+        updateToolset,
       );
     }
     await runLauncher("start");
     emit("state", "Ready");
-    await shell.openExternal(APP_URL);
+    openPentagiWindow();
     return;
   }
   await runLauncher(action);
@@ -338,7 +391,11 @@ ipcMain.handle("app:action", async (_event, request) => {
   if (taskRunning) return { ok: false, error: "A setup task is already running." };
   taskRunning = true;
   try {
-    await runQuickStart(action, typeof request === "object" ? request.toolset : undefined);
+    await runQuickStart(
+      action,
+      typeof request === "object" ? request.toolset : undefined,
+      typeof request === "object" && request.updateToolset === true,
+    );
     return { ok: true, action };
   } catch (error) {
     emit("state", "Action failed");
@@ -352,7 +409,7 @@ ipcMain.handle("app:action", async (_event, request) => {
 ipcMain.handle("app:resources", async () => hostResources());
 
 ipcMain.handle("app:open", async () => {
-  await shell.openExternal(APP_URL);
+  openPentagiWindow();
 });
 
 ipcMain.handle("app:open-docker-install", async () => {
@@ -361,6 +418,10 @@ ipcMain.handle("app:open-docker-install", async () => {
 
 ipcMain.handle("app:open-docker-startup", async () => {
   await shell.openExternal(dockerLinks(process.platform).startup);
+});
+
+ipcMain.handle("app:open-tool-inventory", async () => {
+  await shell.openExternal("https://github.com/vxcontrol/kali-linux-image");
 });
 
 ipcMain.handle("app:login-setting-state", async () => {
@@ -399,6 +460,14 @@ ipcMain.handle("app:login-setting", async (_event, enabled) => {
 });
 
 app.whenReady().then(() => {
+  app.on("certificate-error", (event, _webContents, url, _error, _certificate, callback) => {
+    if (new URL(url).origin === APP_ORIGIN) {
+      event.preventDefault();
+      callback(true);
+    } else {
+      callback(false);
+    }
+  });
   createWindow();
   try {
     const settings = JSON.parse(fs.readFileSync(LOGIN_SETTINGS_PATH, "utf8"));

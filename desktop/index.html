@@ -14,7 +14,7 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <div class="hero-mark" aria-hidden="true">P</div>
+        <img class="hero-mark" src="assets/pentagi-icon.svg" alt="">
         <div>
           <p class="eyebrow">LOCAL AI • DESKTOP QUICK START</p>
           <h1>PentAGI <span>Local</span></h1>
@@ -62,36 +62,42 @@
         <div class="profiles">
           <label class="profile">
             <input type="radio" name="profile" value="base" checked>
-            <span><strong>Standard Kali</strong><small>Use and update PentAGI's maintained Kali worker image (about 6 GB+ download). Best default for most computers.</small></span>
+            <span><strong>Lean curated Kali</strong><small>Upstream base image with 200+ curated CLI security tools (about 6 GB+ download). Recommended for most laptops; far smaller than the full Kali suite.</small></span>
+          </label>
+          <label class="profile">
+            <input type="radio" name="profile" value="systemd">
+            <span><strong>Curated Kali + systemd</strong><small>Same curated tools with systemctl support for tools that need to manage services. Uses the upstream systemd worker image.</small></span>
           </label>
           <label class="profile">
             <input type="radio" name="profile" value="custom">
-            <span><strong>Pick individual tools</strong><small>Build a local image with only the packages selected below. Reused by future PentAGI tasks.</small></span>
+            <span><strong>Curated Kali + chosen add-ons</strong><small>Add only selected Kali packages not already in the 200+ tool base. Reused by later tasks; the base image is still about 6 GB.</small></span>
           </label>
           <label class="profile" id="full-profile">
             <input type="radio" name="profile" value="full">
-            <span><strong>Full Kali suite</strong><small>Build a reusable image with kali-linux-everything. Very large download and storage use.</small></span>
+            <span><strong>Full Kali suite</strong><small>Build a reusable image with kali-linux-everything. Very large download and storage use; enabled only when detected RAM and disk meet the higher threshold.</small></span>
           </label>
         </div>
+        <details class="included-tools">
+          <summary>What comes with the curated Kali image?</summary>
+          <p>Upstream documents 200+ CLI tools. Examples include Nmap, Masscan, Amass, Subfinder, Nuclei, SQLmap, Gobuster, FFUF, Nikto, Hydra, John, Hashcat, Metasploit, Impacket, NetExec, TShark, tcpdump, mitmproxy, Binwalk, and Radare2. <button id="tool-inventory" class="inline-link">See the upstream inventory</button>.</p>
+        </details>
         <div class="tool-list" aria-label="Individual Kali tools">
-          <label><input type="checkbox" name="tool" value="nmap"><span>Nmap</span></label>
-          <label><input type="checkbox" name="tool" value="sqlmap"><span>SQLmap</span></label>
-          <label><input type="checkbox" name="tool" value="nikto"><span>Nikto</span></label>
-          <label><input type="checkbox" name="tool" value="gobuster"><span>Gobuster</span></label>
-          <label><input type="checkbox" name="tool" value="hydra"><span>Hydra</span></label>
-          <label><input type="checkbox" name="tool" value="john"><span>John the Ripper</span></label>
-          <label><input type="checkbox" name="tool" value="amass"><span>Amass</span></label>
-          <label><input type="checkbox" name="tool" value="tshark"><span>TShark</span></label>
+          <label><input type="checkbox" name="tool" value="dnsenum"><span>dnsenum <small>DNS enumeration</small></span></label>
+          <label><input type="checkbox" name="tool" value="enum4linux-ng"><span>enum4linux-ng <small>Windows/SMB enumeration</small></span></label>
+          <label><input type="checkbox" name="tool" value="testssl.sh"><span>testssl.sh <small>TLS configuration checks</small></span></label>
+          <label><input type="checkbox" name="tool" value="net-snmp"><span>Net-SNMP <small>SNMP discovery and queries</small></span></label>
+          <label><input type="checkbox" name="tool" value="recon-ng"><span>Recon-ng <small>modular reconnaissance</small></span></label>
+          <label><input type="checkbox" name="tool" value="zmap"><span>ZMap <small>network measurement/scanning</small></span></label>
         </div>
-        <p class="toolbox-note">Tool images stay in Docker and are reused; nothing is installed into your host OS. Only run PentAGI against systems you own or are authorized to test. Full-suite availability is a conservative estimate based on detected RAM and free disk; Docker Desktop's virtual disk may differ.</p>
+        <p class="toolbox-note">PentAGI worker containers can use Docker's normal outbound networking; Docker isolation does not mean they are offline. Worker images stay in Docker and are reused; tools are not installed into your host OS. USB devices are not automatically passed through. Only run PentAGI against systems you own or are authorized to test.</p>
       </section>
 
       <section class="actions">
         <div>
-          <h2>Start your workspace</h2>
-          <p>First setup downloads several gigabytes plus the selected worker image. Docker must already be installed and running.</p>
+          <h2>Install and start your workspace</h2>
+          <p>First setup downloads the verified local models and Docker images (several gigabytes). Your selected worker is installed in Docker. Keep this app open until setup and checks finish.</p>
         </div>
-        <button id="start" class="primary">Set up &amp; start</button>
+        <button id="start" class="primary">Install selected setup &amp; start</button>
       </section>
 
       <section class="toolbar" aria-label="Workspace controls">
