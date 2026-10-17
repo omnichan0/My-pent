@@ -1,14 +1,25 @@
-# PentAGI + llama.cpp Quick Start
+<div align="center">
+
+<img src="assets/quick-start-banner.svg" alt="PentAGI Local AI Quick Start" width="100%">
+
+[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-e11d48?style=for-the-badge)](#start)
+[![Local AI](https://img.shields.io/badge/AI-100%25%20local-db2777?style=for-the-badge)](#whats-configured)
+[![License](https://img.shields.io/badge/model%20licenses-Apache--2.0-be185d?style=for-the-badge)](#safety-and-licensing)
+
+**PentAGI powered by llama.cpp and local GGUF models**
+
+One quick start for the app, model, embeddings, database, and dependencies.
+
+</div>
 
 Run PentAGI with a local llama.cpp model on Windows, macOS, or Linux. The
 quick-start scripts fetch the pinned PentAGI source and model files, create
 private local credentials, configure the LLM and embedding providers, start
 the Docker Compose services, and run provider smoke tests.
 
-The application architecture remains PentAGI's upstream architecture. This
-repository adds a small bootstrap layer and a Compose override for llama.cpp;
-upstream source and model weights are fetched at setup time rather than copied
-into this repository.
+> **Upstream architecture preserved.** This repository adds a bootstrap layer
+> and a Compose override for llama.cpp; upstream source and model weights are
+> fetched during setup rather than copied into this repository.
 
 ## Before you start
 

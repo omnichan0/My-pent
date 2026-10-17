@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="280" viewBox="0 0 1200 280" role="img" aria-labelledby="title desc">
+  <title id="title">PentAGI Local AI Quick Start</title>
+  <desc id="desc">PentAGI with local llama.cpp models on Windows, macOS, and Linux.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#160b18"/>
+      <stop offset="0.52" stop-color="#39112f"/>
+      <stop offset="1" stop-color="#831843"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fb7185"/>
+      <stop offset="1" stop-color="#f0abfc"/>
+    </linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" fill="none" stroke="#fff" stroke-opacity=".055"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="280" rx="24" fill="url(#background)"/>
+  <rect width="1200" height="280" rx="24" fill="url(#grid)"/>
+  <circle cx="1040" cy="68" r="145" fill="#ec4899" opacity=".13"/>
+  <circle cx="1080" cy="252" r="170" fill="#fb7185" opacity=".12"/>
+  <path d="M70 76h8v128h-8z" fill="url(#accent)" rx="4"/>
+  <text x="112" y="116" fill="#fda4af" font-family="Segoe UI,Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="4">LOCAL AI • CROSS-PLATFORM QUICK START</text>
+  <text x="108" y="174" fill="#fff7fb" font-family="Segoe UI,Arial,sans-serif" font-size="48" font-weight="750">PentAGI + llama.cpp</text>
+  <text x="112" y="216" fill="#fbcfe8" font-family="Segoe UI,Arial,sans-serif" font-size="22">Local models. Ready-to-run services. No cloud LLM key.</text>
+  <g transform="translate(965 104)" fill="none" stroke="url(#accent)" stroke-width="3">
+    <path d="M0 32 42 8l42 24v48L42 104 0 80z"/>
+    <path d="m21 44 21-12 21 12v24L42 80 21 68z"/>
+    <circle cx="42" cy="56" r="7" fill="#fda4af" stroke="none"/>
+    <path d="M84 32h30m-30 48h30M42 8V-10"/>
+  </g>
+</svg>
