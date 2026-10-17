@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("start", "stop", "status", "logs")]
+    [ValidateSet("prepare", "start", "stop", "status", "logs")]
     [string]$Action = "start"
 )
 
@@ -144,6 +144,10 @@ function Prepare-Runtime {
 
 try {
     switch ($Action) {
+        "prepare" {
+            Prepare-Runtime
+            Write-Host "PentAGI source, local configuration, and model files are ready."
+        }
         "start" {
             Prepare-Runtime
             Invoke-DockerCompose @("up", "-d")

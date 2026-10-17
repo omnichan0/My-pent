@@ -119,6 +119,10 @@ prepare_runtime() {
 }
 
 case "$ACTION" in
+  prepare)
+    prepare_runtime
+    printf 'PentAGI source, local configuration, and model files are ready.\n'
+    ;;
   start)
     prepare_runtime
     compose up -d
@@ -150,7 +154,7 @@ case "$ACTION" in
     compose logs --tail 100
     ;;
   *)
-    printf 'Usage: %s [start|stop|status|logs]\n' "$0" >&2
+    printf 'Usage: %s [prepare|start|stop|status|logs]\n' "$0" >&2
     exit 2
     ;;
 esac

@@ -1,0 +1,86 @@
+{
+  "name": "pentagi-local-desktop",
+  "version": "1.0.0",
+  "description": "Desktop setup and controls for PentAGI with local llama.cpp models",
+  "author": "omnichan0",
+  "homepage": "https://github.com/omnichan0/My-pent",
+  "desktopName": "pentagi-local",
+  "main": "main.cjs",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^44.9.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.omnichan0.pentagi.local",
+    "productName": "PentAGI Local",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "*.cjs",
+      "*.js",
+      "*.html",
+      "*.css",
+      "test/*.cjs",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "system-setup.cjs",
+        "to": "system-setup.cjs"
+      },
+      {
+        "from": "../quick-start.sh",
+        "to": "quick-start.sh"
+      },
+      {
+        "from": "../quick-start.ps1",
+        "to": "quick-start.ps1"
+      },
+      {
+        "from": "../docker-compose.llama.yml",
+        "to": "docker-compose.llama.yml"
+      },
+      {
+        "from": "../config",
+        "to": "config"
+      },
+      {
+        "from": "../tests",
+        "to": "tests"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.developer-tools"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Development",
+      "syncDesktopName": true,
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    }
+  }
+}

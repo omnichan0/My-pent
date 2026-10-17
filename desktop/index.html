@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:"
+    >
+    <title>PentAGI Local</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="renderer.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div class="hero-mark" aria-hidden="true">P</div>
+        <div>
+          <p class="eyebrow">LOCAL AI • DESKTOP QUICK START</p>
+          <h1>PentAGI <span>Local</span></h1>
+          <p class="subtitle">PentAGI + llama.cpp, set up and managed from one app.</p>
+        </div>
+        <div class="status"><i id="status-dot"></i><span id="status-text">Ready to set up</span></div>
+      </header>
+
+      <section class="intro">
+        <h2>Your local AI security workspace</h2>
+        <p>
+          Install Docker once and keep it running. This desktop app downloads the
+          pinned PentAGI source and verified model files, configures the database
+          and local AI services, runs startup checks, and opens PentAGI when ready.
+        </p>
+      </section>
+
+      <section class="prerequisite">
+        <div>
+          <span class="card-icon">ONE-TIME SETUP</span>
+          <h2>Install Docker first</h2>
+          <p>Install Docker Desktop (Windows/macOS) or Docker Engine (Linux), open it, and confirm it is running. Set Docker to start with your computer so your workspace is ready whenever you open this app.</p>
+        </div>
+        <div class="prereq-links">
+          <button id="docker-install" class="secondary">Install Docker</button>
+          <button id="docker-startup" class="secondary">Docker startup settings</button>
+        </div>
+      </section>
+
+      <section class="cards" aria-label="Included components">
+        <article><span class="card-icon">01</span><h3>PentAGI</h3><p>Upstream app and security-tool services</p></article>
+        <article><span class="card-icon">02</span><h3>Local chat</h3><p>G9v3 GGUF served by llama.cpp</p></article>
+        <article><span class="card-icon">03</span><h3>Memory</h3><p>Nomic embeddings with pgvector</p></article>
+      </section>
+
+      <section class="toolbox">
+        <div class="toolbox-heading">
+          <div>
+            <p class="eyebrow">REUSABLE ISOLATED WORKER IMAGES</p>
+            <h2>Choose your security tools</h2>
+            <p id="resource-guidance">Checking this computer's available resources...</p>
+          </div>
+          <button id="apply-toolset" class="secondary">Install / update selected toolbox</button>
+        </div>
+        <div class="profiles">
+          <label class="profile">
+            <input type="radio" name="profile" value="base" checked>
+            <span><strong>Standard Kali</strong><small>Use and update PentAGI's maintained Kali worker image (about 6 GB+ download). Best default for most computers.</small></span>
+          </label>
+          <label class="profile">
+            <input type="radio" name="profile" value="custom">
+            <span><strong>Pick individual tools</strong><small>Build a local image with only the packages selected below. Reused by future PentAGI tasks.</small></span>
+          </label>
+          <label class="profile" id="full-profile">
+            <input type="radio" name="profile" value="full">
+            <span><strong>Full Kali suite</strong><small>Build a reusable image with kali-linux-everything. Very large download and storage use.</small></span>
+          </label>
+        </div>
+        <div class="tool-list" aria-label="Individual Kali tools">
+          <label><input type="checkbox" name="tool" value="nmap"><span>Nmap</span></label>
+          <label><input type="checkbox" name="tool" value="sqlmap"><span>SQLmap</span></label>
+          <label><input type="checkbox" name="tool" value="nikto"><span>Nikto</span></label>
+          <label><input type="checkbox" name="tool" value="gobuster"><span>Gobuster</span></label>
+          <label><input type="checkbox" name="tool" value="hydra"><span>Hydra</span></label>
+          <label><input type="checkbox" name="tool" value="john"><span>John the Ripper</span></label>
+          <label><input type="checkbox" name="tool" value="amass"><span>Amass</span></label>
+          <label><input type="checkbox" name="tool" value="tshark"><span>TShark</span></label>
+        </div>
+        <p class="toolbox-note">Tool images stay in Docker and are reused; nothing is installed into your host OS. Only run PentAGI against systems you own or are authorized to test. Full-suite availability is a conservative estimate based on detected RAM and free disk; Docker Desktop's virtual disk may differ.</p>
+      </section>
+
+      <section class="actions">
+        <div>
+          <h2>Start your workspace</h2>
+          <p>First setup downloads several gigabytes plus the selected worker image. Docker must already be installed and running.</p>
+        </div>
+        <button id="start" class="primary">Set up &amp; start</button>
+      </section>
+
+      <section class="toolbar" aria-label="Workspace controls">
+        <button id="open" class="secondary">Open PentAGI</button>
+        <button id="status" class="secondary">Refresh status</button>
+        <button id="logs" class="secondary">View logs</button>
+        <button id="stop" class="danger">Stop services</button>
+      </section>
+
+      <section class="login-option">
+        <label>
+          <input id="launch-at-login" type="checkbox">
+          <span><strong>Open PentAGI Local when I sign in</strong><small>Docker must also be configured to start with your computer.</small></span>
+        </label>
+      </section>
+
+      <section class="console-panel">
+        <div class="console-heading"><h2>Setup activity</h2><button id="clear" class="text-button">Clear</button></div>
+        <pre id="console" role="log" aria-live="polite">Welcome. Select “Set up &amp; start” to prepare your local workspace.</pre>
+      </section>
+
+      <footer>
+        <span>Runs locally on this computer. PentAGI uses Docker to isolate its services and tools.</span>
+      </footer>
+    </main>
+  </body>
+</html>

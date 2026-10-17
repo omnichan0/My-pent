@@ -3,3 +3,6 @@
 /llama.cpp/
 /models/
 *.part
+/desktop/node_modules/
+/desktop/dist/
+/desktop/package-lock.json.tmp
