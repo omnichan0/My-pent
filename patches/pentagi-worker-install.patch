@@ -219,7 +219,7 @@ index 09e1da3..8b308a5 100644
  		"StoreGuideToolName",
  		"SearchToolName",
 diff --git a/backend/pkg/tools/args.go b/backend/pkg/tools/args.go
-index 669a4ac..f54c4e9 100644
+index 669a4ac..d0cb844 100644
 --- a/backend/pkg/tools/args.go
 +++ b/backend/pkg/tools/args.go
 @@ -176,6 +176,11 @@ type AskUser struct {
@@ -234,6 +234,26 @@ index 669a4ac..f54c4e9 100644
  type Done struct {
  	// Success is a pointer for the reason TaskResult.Success is.
  	Success *Bool  `json:"success" jsonschema:"title=Execution result,type=boolean" jsonschema_description:"True if the subtask was executed successfully and its objective was reached"`
+@@ -495,6 +500,9 @@ func (l *SubtaskInfos) UnmarshalJSON(data []byte) error {
+ 
+ 		return nil
+ 	}
++	if strings.HasPrefix(strings.TrimSpace(string(data)), "[") {
++		directErr = fmt.Errorf("invalid subtasks list element (SubtaskInfo): %w", directErr)
++	}
+ 
+ 	return unwrapStringEncodedList(data, "subtasks", directErr, (*[]SubtaskInfo)(l))
+ }
+@@ -522,6 +530,9 @@ func (o *SubtaskOperations) UnmarshalJSON(data []byte) error {
+ 
+ 		return nil
+ 	}
++	if strings.HasPrefix(strings.TrimSpace(string(data)), "[") {
++		directErr = fmt.Errorf("invalid operations list element (SubtaskOperation): %w", directErr)
++	}
+ 
+ 	return unwrapStringEncodedList(data, "operations", directErr, (*[]SubtaskOperation)(o))
+ }
 diff --git a/backend/pkg/tools/fixtures_test.go b/backend/pkg/tools/fixtures_test.go
 index 6d5362c..b36f6bb 100644
 --- a/backend/pkg/tools/fixtures_test.go
