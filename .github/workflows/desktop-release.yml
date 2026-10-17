@@ -42,10 +42,17 @@ jobs:
         include:
           - os: windows-latest
             artifact: windows
+            files: desktop/dist/*.exe
           - os: macos-latest
             artifact: macos
+            files: |
+              desktop/dist/*.dmg
+              desktop/dist/*.zip
           - os: ubuntu-24.04
             artifact: linux
+            files: |
+              desktop/dist/*.AppImage
+              desktop/dist/*.deb
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -63,7 +70,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pentagi-local-${{ matrix.artifact }}
-          path: desktop/dist/*
+          path: ${{ matrix.files }}
           if-no-files-found: error
 
   publish:

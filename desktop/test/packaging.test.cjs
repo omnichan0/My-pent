@@ -41,6 +41,20 @@ test("Linux releases provide an installable package and portable app", () => {
   assert.equal(manifest.build.linux.packageCategory, "devel");
 });
 
+test("release workflow uploads only installer files, not build directories", () => {
+  const workflow = fs.readFileSync(
+    path.resolve(root, "../.github/workflows/desktop-release.yml"),
+    "utf8",
+  );
+
+  assert.match(workflow, /files: desktop\/dist\/\*\.exe/);
+  assert.match(workflow, /desktop\/dist\/\*\.dmg/);
+  assert.match(workflow, /desktop\/dist\/\*\.zip/);
+  assert.match(workflow, /desktop\/dist\/\*\.AppImage/);
+  assert.match(workflow, /desktop\/dist\/\*\.deb/);
+  assert.match(workflow, /path: \$\{\{ matrix\.files \}\}/);
+});
+
 test("end-user bootstrap resources are bundled into desktop releases", () => {
   const resourceNames = manifest.build.extraResources.map((entry) => entry.to);
   assert.ok(resourceNames.includes("quick-start.ps1"));
