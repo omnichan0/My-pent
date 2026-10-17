@@ -16,7 +16,18 @@ $EmbedModel = "nomic-embed-text-v1.5.Q4_K_M.gguf"
 $EmbedModelUrl = "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/0188c9bf409793f810680a5a431e7b899c46104c/$EmbedModel"
 $EmbedModelSha256 = "d4e388894e09cf3816e8b0896d81d265b55e7a9fff9ab03fe8bf4ef5e11295ac"
 
+function Get-ExternalCommand([string]$Name) {
+    foreach ($Candidate in @("$Name.exe", $Name)) {
+        $Command = Get-Command $Candidate -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($Command) {
+            return $Command.Path
+        }
+    }
+    throw "Required command not found: $Name"
+}
+
 function Invoke-DockerCompose([string[]]$ComposeArgs) {
+    $DockerCommand = Get-ExternalCommand "docker"
     $ComposeArguments = @(
         "compose",
         "--project-directory", $RuntimeDir,
@@ -24,7 +35,7 @@ function Invoke-DockerCompose([string[]]$ComposeArgs) {
         "-f", (Join-Path $RuntimeDir "docker-compose.yml"),
         "-f", (Join-Path $RootDir "docker-compose.llama.yml")
     ) + $ComposeArgs
-    & docker @ComposeArguments
+    & $DockerCommand @ComposeArguments
     if ($LASTEXITCODE -ne 0) {
         throw "Docker Compose failed with exit code $LASTEXITCODE."
     }
@@ -45,7 +56,7 @@ function Ensure-Model([string]$Name, [string]$Url, [string]$ExpectedHash) {
     }
 
     Write-Host "Downloading $Name (first run only)..."
-    & curl.exe --fail --location --retry 3 --output $Partial $Url
+    & $script:CurlCommand --fail --location --retry 3 --output $Partial $Url
     if ($LASTEXITCODE -ne 0) {
         Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $Partial
         throw "Download failed for $Name."
@@ -58,17 +69,15 @@ function Ensure-Model([string]$Name, [string]$Url, [string]$ExpectedHash) {
 }
 
 function Prepare-Runtime {
-    foreach ($Command in @("git.exe", "docker.exe", "curl.exe")) {
-        if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
-            throw "Required command not found: $Command"
-        }
-    }
+    $script:GitCommand = Get-ExternalCommand "git"
+    $script:DockerCommand = Get-ExternalCommand "docker"
+    $script:CurlCommand = Get-ExternalCommand "curl"
 
-    & docker compose version *> $null
+    & $script:DockerCommand compose version *> $null
     if ($LASTEXITCODE -ne 0) {
         throw "Docker Compose v2 is required."
     }
-    & docker info *> $null
+    & $script:DockerCommand info *> $null
     if ($LASTEXITCODE -ne 0) {
         throw "Start Docker Desktop, then rerun this command."
     }
@@ -76,8 +85,8 @@ function Prepare-Runtime {
     $ParentDir = Split-Path -Parent $RuntimeDir
     New-Item -ItemType Directory -Force -Path $ParentDir | Out-Null
     if (Test-Path -LiteralPath (Join-Path $RuntimeDir ".git")) {
-        $Origin = (& git -C $RuntimeDir remote get-url origin).Trim()
-        $Revision = (& git -C $RuntimeDir rev-parse HEAD).Trim()
+        $Origin = (& $script:GitCommand -C $RuntimeDir remote get-url origin).Trim()
+        $Revision = (& $script:GitCommand -C $RuntimeDir rev-parse HEAD).Trim()
         if ($LASTEXITCODE -ne 0 -or $Origin -ne $PentagiRepository -or $Revision -ne $PentagiRef) {
             throw "$RuntimeDir is not the expected official PentAGI revision; preserve it and use a fresh runtime directory."
         }
@@ -85,13 +94,13 @@ function Prepare-Runtime {
         if (Test-Path -LiteralPath $RuntimeDir) {
             throw "$RuntimeDir exists but is not a Git checkout; move it aside and retry."
         }
-        & git init $RuntimeDir
+        & $script:GitCommand init $RuntimeDir
         if ($LASTEXITCODE -ne 0) { throw "Could not initialize the PentAGI checkout." }
-        & git -C $RuntimeDir remote add origin $PentagiRepository
+        & $script:GitCommand -C $RuntimeDir remote add origin $PentagiRepository
         if ($LASTEXITCODE -ne 0) { throw "Could not configure the official PentAGI remote." }
-        & git -C $RuntimeDir fetch --depth 1 origin $PentagiRef
+        & $script:GitCommand -C $RuntimeDir fetch --depth 1 origin $PentagiRef
         if ($LASTEXITCODE -ne 0) { throw "Could not download the pinned PentAGI source." }
-        & git -C $RuntimeDir checkout --detach FETCH_HEAD
+        & $script:GitCommand -C $RuntimeDir checkout --detach FETCH_HEAD
         if ($LASTEXITCODE -ne 0) { throw "Could not check out the pinned PentAGI source." }
     }
 
@@ -139,7 +148,7 @@ try {
             Prepare-Runtime
             Invoke-DockerCompose @("up", "-d")
             Write-Host "Waiting for PentAGI at https://localhost:8443 ..."
-            & curl.exe --insecure --silent --show-error --fail --retry 120 --retry-connrefused --retry-delay 5 --max-time 5 https://localhost:8443/ *> $null
+            & $script:CurlCommand --insecure --silent --show-error --fail --retry 120 --retry-connrefused --retry-delay 5 --max-time 5 https://localhost:8443/ *> $null
             if ($LASTEXITCODE -ne 0) {
                 throw "PentAGI did not become ready; inspect logs with: .\quick-start.ps1 logs"
             }

@@ -28,10 +28,18 @@ into this repository.
 Download or clone this repository, then run the launcher for your operating
 system from its root directory:
 
-**Windows (PowerShell):**
+**Windows Command Prompt (CMD):**
+
+```bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\quick-start.ps1
+```
+
+**Windows PowerShell or PowerShell 7 terminal:**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\quick-start.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\quick-start.ps1
+# Or, with PowerShell 7:
+pwsh -NoProfile -File .\quick-start.ps1
 ```
 
 **macOS or Linux:**
