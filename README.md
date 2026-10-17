@@ -123,6 +123,12 @@ systems installed on your computer.
   on less capable systems; the full suite can use substantially more storage
   than the initial estimate while building and updating.
 
+If a task needs software that is missing, PentAGI will present the specific
+tool, source, install commands, and expected changes for your approval before
+installing it inside the worker. Approved third-party tools are supported too.
+After a successful install, the worker's local reusable Docker image is updated
+so later tasks can use the tool; the host operating system is not modified.
+
 PentAGI's capability depends on the worker tools, the authorized target and
 scope, and the instructions you give the AI. Clear, bounded prompts and
 security expertise help; AI output is not proof that a finding is real or

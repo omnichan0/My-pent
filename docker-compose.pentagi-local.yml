@@ -1,0 +1,6 @@
+services:
+  pentagi:
+    image: pentagi-local/pentagi:install-approval-v1
+    build:
+      context: .
+      dockerfile: Dockerfile

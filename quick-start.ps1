@@ -33,7 +33,8 @@ function Invoke-DockerCompose([string[]]$ComposeArgs) {
         "--project-directory", $RuntimeDir,
         "--env-file", (Join-Path $RuntimeDir ".env"),
         "-f", (Join-Path $RuntimeDir "docker-compose.yml"),
-        "-f", (Join-Path $RootDir "docker-compose.llama.yml")
+        "-f", (Join-Path $RootDir "docker-compose.llama.yml"),
+        "-f", (Join-Path $RootDir "docker-compose.pentagi-local.yml")
     ) + $ComposeArgs
     & $DockerCommand @ComposeArguments
     if ($LASTEXITCODE -ne 0) {
@@ -108,6 +109,22 @@ function Prepare-Runtime {
         throw "PentAGI's Docker Compose file is missing."
     }
 
+    $PatchPath = Join-Path $RootDir "patches/pentagi-worker-install.patch"
+    if (-not (Test-Path -LiteralPath $PatchPath)) {
+        throw "The bundled PentAGI worker-install patch is missing."
+    }
+    & $script:GitCommand -C $RuntimeDir apply --reverse --check $PatchPath *> $null
+    if ($LASTEXITCODE -ne 0) {
+        & $script:GitCommand -C $RuntimeDir apply --check $PatchPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "The bundled PentAGI patch does not match the pinned upstream source."
+        }
+        & $script:GitCommand -C $RuntimeDir apply $PatchPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to apply the bundled PentAGI worker-install patch."
+        }
+    }
+
     New-Item -ItemType Directory -Force -Path $ModelsDir | Out-Null
     Ensure-Model $ChatModel $ChatModelUrl $ChatModelSha256
     Ensure-Model $EmbedModel $EmbedModelUrl $EmbedModelSha256
@@ -138,6 +155,15 @@ function Prepare-Runtime {
             "CORS_ORIGINS=https://localhost:8443"
         ) | Set-Content -Encoding Ascii -LiteralPath $EnvPath
     }
+    $EnvLines = @(Get-Content -LiteralPath $EnvPath)
+    if ($EnvLines -match '^ASK_USER=') {
+        $EnvLines = @($EnvLines | ForEach-Object {
+            if ($_ -match '^ASK_USER=') { "ASK_USER=true" } else { $_ }
+        })
+    } else {
+        $EnvLines += "ASK_USER=true"
+    }
+    $EnvLines | Set-Content -Encoding Ascii -LiteralPath $EnvPath
 
     Invoke-DockerCompose @("config", "--quiet")
 }

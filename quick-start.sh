@@ -39,6 +39,7 @@ compose() {
     --env-file "$RUNTIME_DIR/.env" \
     -f "$RUNTIME_DIR/docker-compose.yml" \
     -f "$ROOT_DIR/docker-compose.llama.yml" \
+    -f "$ROOT_DIR/docker-compose.pentagi-local.yml" \
     "$@"
 }
 
@@ -58,6 +59,16 @@ ensure_pentagi_source() {
   fi
 
   [ -f "$RUNTIME_DIR/docker-compose.yml" ] || fail "PentAGI's Docker Compose file is missing."
+
+  local patch="$ROOT_DIR/patches/pentagi-worker-install.patch"
+  [ -f "$patch" ] || fail "The bundled PentAGI worker-install patch is missing."
+  if git -C "$RUNTIME_DIR" apply --reverse --check "$patch" >/dev/null 2>&1; then
+    return
+  fi
+  if ! git -C "$RUNTIME_DIR" apply --check "$patch"; then
+    fail "The bundled PentAGI patch does not match the pinned upstream source."
+  fi
+  git -C "$RUNTIME_DIR" apply "$patch" || fail "Failed to apply the bundled PentAGI worker-install patch."
 }
 
 ensure_model() {
@@ -113,6 +124,11 @@ prepare_runtime() {
       printf 'CORS_ORIGINS=https://localhost:8443\n'
     } > "$RUNTIME_DIR/.env"
     chmod 600 "$RUNTIME_DIR/.env"
+  fi
+  if grep -q '^ASK_USER=' "$RUNTIME_DIR/.env"; then
+    sed -i 's/^ASK_USER=.*/ASK_USER=true/' "$RUNTIME_DIR/.env"
+  else
+    printf 'ASK_USER=true\n' >> "$RUNTIME_DIR/.env"
   fi
 
   compose config --quiet || fail "Docker Compose configuration is invalid."

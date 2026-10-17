@@ -3,6 +3,7 @@ const { createHash } = require("node:crypto");
 const KALI_BASE = "vxcontrol/kali-linux:latest";
 const SYSTEMD_KALI_IMAGE = "vxcontrol/kali-linux:systemd";
 const FULL_KALI_IMAGE = "pentagi-local/kali-tools:full";
+const PERSISTENT_KALI_IMAGE = "pentagi-local/kali-tools:approved";
 const STANDARD_RAM_GIB = 16;
 const STANDARD_DISK_GIB = 40;
 const FULL_KALI_RAM_GIB = 32;
@@ -88,6 +89,7 @@ module.exports = {
   FULL_KALI_IMAGE,
   FULL_KALI_RAM_GIB,
   KALI_BASE,
+  PERSISTENT_KALI_IMAGE,
   SYSTEMD_KALI_IMAGE,
   STANDARD_DISK_GIB,
   STANDARD_RAM_GIB,

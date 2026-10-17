@@ -4,7 +4,12 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { dockerLinks, gitInstallPlan } = require("./system-setup.cjs");
-const { dockerfileForPackages, resourceGuidance, toolsetPlan } = require("./toolsets.cjs");
+const {
+  dockerfileForPackages,
+  PERSISTENT_KALI_IMAGE,
+  resourceGuidance,
+  toolsetPlan,
+} = require("./toolsets.cjs");
 
 const APP_URL = "https://localhost:8443";
 const APP_ORIGIN = new URL(APP_URL).origin;
@@ -95,6 +100,7 @@ function copyBootstrapFiles() {
     ["quick-start.sh", "quick-start.sh"],
     ["quick-start.ps1", "quick-start.ps1"],
     ["docker-compose.llama.yml", "docker-compose.llama.yml"],
+    ["docker-compose.pentagi-local.yml", "docker-compose.pentagi-local.yml"],
     ["config/llama.cpp.provider.yml", "config/llama.cpp.provider.yml"],
     ["tests/llama-smoke.yml", "tests/llama-smoke.yml"],
   ];
@@ -108,6 +114,11 @@ function copyBootstrapFiles() {
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.copyFileSync(sourcePath, targetPath);
   }
+  const patchSource = path.join(RESOURCE_ROOT, "patches");
+  if (!fs.existsSync(patchSource)) {
+    throw new Error("Packaged setup directory is missing: patches");
+  }
+  fs.cpSync(patchSource, path.join(APP_DATA_ROOT, "patches"), { recursive: true, force: true });
 }
 
 async function runInstaller(command, args, message) {
@@ -252,6 +263,20 @@ async function installToolset(profile, tools = [], update = false) {
   if (!docker) throw new Error("Docker is not available.");
   const resources = hostResources();
   const plan = toolsetPlan(profile, tools, resources.memoryGiB, resources.freeDiskGiB);
+  const persistentImageCheck = spawnSync(docker, ["image", "inspect", PERSISTENT_KALI_IMAGE], {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+  if (persistentImageCheck.error) throw persistentImageCheck.error;
+  if (persistentImageCheck.status === 0 && !update) {
+    emit("output", `Reusing persistent worker image ${PERSISTENT_KALI_IMAGE}.\n`);
+    updatePentagiEnvironment({
+      DOCKER_DEFAULT_IMAGE_FOR_PENTEST: PERSISTENT_KALI_IMAGE,
+      DOCKER_IMAGE_SELECTION_MODE: "fixed",
+    });
+    return;
+  }
+
   const imageCheck = spawnSync(docker, ["image", "inspect", plan.image], {
     stdio: "ignore",
     windowsHide: true,
@@ -278,8 +303,12 @@ async function installToolset(profile, tools = [], update = false) {
       context,
     ], { cwd: context });
   }
+  if (plan.image !== PERSISTENT_KALI_IMAGE) {
+    emit("output", `Saving selected setup as reusable image ${PERSISTENT_KALI_IMAGE}.\n`);
+    await run(docker, ["image", "tag", plan.image, PERSISTENT_KALI_IMAGE]);
+  }
   updatePentagiEnvironment({
-    DOCKER_DEFAULT_IMAGE_FOR_PENTEST: plan.image,
+    DOCKER_DEFAULT_IMAGE_FOR_PENTEST: PERSISTENT_KALI_IMAGE,
     DOCKER_IMAGE_SELECTION_MODE: "fixed",
   });
 }
@@ -327,13 +356,11 @@ async function runQuickStart(action, requestedToolset, updateToolset = false) {
     const envPath = path.join(APP_DATA_ROOT, ".runtime", "pentagi", ".env");
     const firstSetup = !fs.existsSync(envPath);
     if (firstSetup) await runLauncher("prepare");
-    if (requestedToolset || firstSetup) {
-      await installToolset(
-        requestedToolset?.profile || "base",
-        requestedToolset?.tools || [],
-        updateToolset,
-      );
-    }
+    await installToolset(
+      requestedToolset?.profile || "base",
+      requestedToolset?.tools || [],
+      updateToolset,
+    );
     await runLauncher("start");
     emit("state", "Ready");
     openPentagiWindow();

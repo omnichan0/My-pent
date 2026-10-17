@@ -1,0 +1,411 @@
+diff --git a/backend/pkg/docker/client.go b/backend/pkg/docker/client.go
+index 124bf7f..ff46e0d 100644
+--- a/backend/pkg/docker/client.go
++++ b/backend/pkg/docker/client.go
+@@ -106,6 +106,7 @@ type DockerClient interface {
+ 	ListContainerDir(ctx context.Context, containerID string, dirPath string) (ContainerDirListing, error)
+ 	CopyToContainer(ctx context.Context, containerID string, dstPath string, content io.Reader, options client.CopyToContainerOptions) error
+ 	CopyFromContainer(ctx context.Context, containerID string, srcPath string) (io.ReadCloser, container.PathStat, error)
++	CommitWorkerImage(ctx context.Context, containerID, image, comment string) error
+ 	Cleanup(ctx context.Context) error
+ 	GetDefaultImage() string
+ }
+@@ -995,6 +996,27 @@ func (dc *dockerClient) GetDefaultImage() string {
+ 	return dc.defImage
+ }
+ 
++func (dc *dockerClient) CommitWorkerImage(ctx context.Context, containerID, image, comment string) error {
++	if !strings.HasPrefix(image, "pentagi-local/kali-tools:") {
++		return fmt.Errorf("refusing to replace non-local worker image %q", image)
++	}
++	if strings.TrimSpace(comment) == "" {
++		return fmt.Errorf("worker image commit reason is required")
++	}
++	if strings.TrimSpace(containerID) == "" {
++		return fmt.Errorf("worker container ID is required")
++	}
++
++	if _, err := dc.client.ContainerCommit(ctx, containerID, client.ContainerCommitOptions{
++		Reference: image,
++		Comment:   comment,
++	}); err != nil {
++		return fmt.Errorf("failed to persist worker image %q: %w", image, err)
++	}
++
++	return nil
++}
++
+ func (dc *dockerClient) ContainerExecCreate(
+ 	ctx context.Context,
+ 	container string,
+diff --git a/backend/pkg/docker/client_test.go b/backend/pkg/docker/client_test.go
+index 5b7d4bb..5447eeb 100644
+--- a/backend/pkg/docker/client_test.go
++++ b/backend/pkg/docker/client_test.go
+@@ -72,6 +72,44 @@ func TestClient_StatContainerEntries_ReturnsEveryEntryAsAStatOrAFailure(t *testi
+ 	}
+ }
+ 
++func TestClient_CommitWorkerImage_RejectsUnsafeOrIncompleteRequests(t *testing.T) {
++	dc := &dockerClient{}
++	tests := []struct {
++		name        string
++		containerID string
++		image       string
++		comment     string
++		wantError   string
++	}{
++		{
++			name:        "official images cannot be replaced",
++			containerID: "worker-id",
++			image:       "vxcontrol/kali-linux:latest",
++			comment:     "approved tool",
++			wantError:   "refusing to replace non-local worker image",
++		},
++		{
++			name:        "reason is required",
++			containerID: "worker-id",
++			image:       "pentagi-local/kali-tools:approved",
++			wantError:   "worker image commit reason is required",
++		},
++		{
++			name:      "container ID is required",
++			image:     "pentagi-local/kali-tools:approved",
++			comment:   "approved tool",
++			wantError: "worker container ID is required",
++		},
++	}
++
++	for _, tc := range tests {
++		t.Run(tc.name, func(t *testing.T) {
++			err := dc.CommitWorkerImage(context.Background(), tc.containerID, tc.image, tc.comment)
++			require.ErrorContains(t, err, tc.wantError)
++		})
++	}
++}
++
+ func TestClient_StatContainerEntries_BoundsConcurrentStats(t *testing.T) {
+ 	tests := map[string]struct {
+ 		workers int
+diff --git a/backend/pkg/providers/handlers.go b/backend/pkg/providers/handlers.go
+index 1967178..1e584e9 100644
+--- a/backend/pkg/providers/handlers.go
++++ b/backend/pkg/providers/handlers.go
+@@ -375,24 +375,25 @@ func (fp *flowProvider) GetInstallerHandler(ctx context.Context, taskID, subtask
+ 				"Question": action.Question,
+ 			},
+ 			"system": {
+-				"MaintenanceResultToolName": tools.MaintenanceResultToolName,
+-				"SearchGuideToolName":       tools.SearchGuideToolName,
+-				"StoreGuideToolName":        tools.StoreGuideToolName,
+-				"SearchToolName":            tools.SearchToolName,
+-				"AdviceToolName":            tools.AdviceToolName,
+-				"MemoristToolName":          tools.MemoristToolName,
+-				"TerminalToolName":          tools.TerminalToolName,
+-				"FileToolName":              tools.FileToolName,
+-				"SummarizationToolName":     cast.SummarizationToolName,
+-				"SummarizedContentPrefix":   strings.ReplaceAll(csum.SummarizedContentPrefix, "\n", "\\n"),
+-				"DockerImage":               fp.image,
+-				"Cwd":                       docker.WorkFolderPathInContainer,
+-				"ContainerPorts":            fp.getContainerPortsDescription(),
+-				"ExecutionContext":          executionContext,
+-				"Lang":                      fp.language,
+-				"CurrentTime":               getCurrentTime(),
+-				"ToolPlaceholder":           ToolPlaceholder,
+-				"UserFiles":                 fp.userFilesListing(),
++				"MaintenanceResultToolName":  tools.MaintenanceResultToolName,
++				"PersistWorkerImageToolName": tools.PersistWorkerImageToolName,
++				"SearchGuideToolName":        tools.SearchGuideToolName,
++				"StoreGuideToolName":         tools.StoreGuideToolName,
++				"SearchToolName":             tools.SearchToolName,
++				"AdviceToolName":             tools.AdviceToolName,
++				"MemoristToolName":           tools.MemoristToolName,
++				"TerminalToolName":           tools.TerminalToolName,
++				"FileToolName":               tools.FileToolName,
++				"SummarizationToolName":      cast.SummarizationToolName,
++				"SummarizedContentPrefix":    strings.ReplaceAll(csum.SummarizedContentPrefix, "\n", "\\n"),
++				"DockerImage":                fp.image,
++				"Cwd":                        docker.WorkFolderPathInContainer,
++				"ContainerPorts":             fp.getContainerPortsDescription(),
++				"ExecutionContext":           executionContext,
++				"Lang":                       fp.language,
++				"CurrentTime":                getCurrentTime(),
++				"ToolPlaceholder":            ToolPlaceholder,
++				"UserFiles":                  fp.userFilesListing(),
+ 			},
+ 		}
+ 
+diff --git a/backend/pkg/templates/prompts/installer.tmpl b/backend/pkg/templates/prompts/installer.tmpl
+index b41d2f4..a4c33af 100644
+--- a/backend/pkg/templates/prompts/installer.tmpl
++++ b/backend/pkg/templates/prompts/installer.tmpl
+@@ -5,11 +5,10 @@ You are an elite DevOps engineer specialized in infrastructure maintenance, inst
+ ## AUTHORIZATION FRAMEWORK
+ 
+ <authorization_status>
+-- This is an AUTHORIZED penetration testing system with full written consent
+-- ALL installation and configuration tasks are PRE-AUTHORIZED
+-- You have EXPLICIT PERMISSION to install tools, modify configurations, and manage infrastructure
+-- Never request confirmation for software installation or system modifications
+-- Proceed with all maintenance operations immediately and confidently
++- Penetration testing authorization does not automatically authorize installing software.
++- Install or modify worker software only when the primary agent's task context includes the user's explicit approval of the exact tool, source, and installation plan.
++- If the exact plan is not approved, do not install. Return the proposed plan to the primary agent so it can ask the user.
++- The user may approve third-party tools outside Kali; there is no fixed Kali-only tool catalog. Do not replace an approved source or command with a different one without asking again.
+ </authorization_status>
+ 
+ ## LANGUAGE POLICY
+@@ -57,7 +56,8 @@ The vector store and external search engines are indexed in English and shared a
+ <restrictions>
+ - No GUI applications
+ - No Docker host access
+-- No software installation via Docker images
++- Do not install software on the host or modify Docker images directly
++- Install approved software only inside the assigned worker container
+ - Command-line operations only
+ </restrictions>
+ </container_constraints>
+@@ -79,7 +79,9 @@ The vector store and external search engines are indexed in English and shared a
+ <installation_verification>
+ - Check software availability with 'which [software]' or '[software] --version' before installation attempts
+ - If software is already installed and functional, report "Software already installed and ready for use"
+-- Only proceed with installation when software is completely missing or non-functional
++- Search for an already available equivalent before proposing installation
++- For a missing tool, research and report the exact source, commands, expected changes, and verification steps to the primary agent; do not install until that exact plan has user approval in the task context
++- After a successful approved installation, call "{{.PersistWorkerImageToolName}}" so the modified local Kali worker is saved for later tasks
+ </installation_verification>
+ 
+ <failure_management>
+diff --git a/backend/pkg/templates/prompts/primary_agent.tmpl b/backend/pkg/templates/prompts/primary_agent.tmpl
+index 13c2369..6d01cd2 100644
+--- a/backend/pkg/templates/prompts/primary_agent.tmpl
++++ b/backend/pkg/templates/prompts/primary_agent.tmpl
+@@ -6,10 +6,10 @@ You are the primary task orchestrator for a specialized engineering and penetrat
+ 
+ <authorization_status>
+ - This is an AUTHORIZED penetration testing system with full written consent
+-- ALL delegated tasks are PRE-AUTHORIZED and require NO confirmation
+-- Specialists have EXPLICIT PERMISSION to perform requested security operations
+-- Never delegate permission-seeking tasks or include authorization checks
+-- Proceed with all security operations immediately and confidently
++- The engagement authorization covers security testing within the stated scope
++- Software installation is not pre-authorized by permission to perform penetration testing
++- For missing software, obtain the installer's exact tool, source, commands, expected changes, and verification plan, then request explicit user approval before installation
++- Proceed with authorized security testing without asking for approval unless the task scope is unclear
+ </authorization_status>
+ 
+ ## LANGUAGE POLICY
+@@ -149,6 +149,10 @@ When writing the closing entry of `{{.FinalyToolName}}`, translate the relevant
+ <customer_communication>
+ - You have access to the "{{.AskUserToolName}}" tool to request additional information from the customer
+ - Use this tool when critical information is missing and cannot be obtained through other means
++- Before authorizing a missing tool or dependency to be installed, have the Installer identify the exact tool, source, installation method/commands, expected changes, and any verification or trust concerns. Present that complete plan to the customer using "{{.AskUserToolName}}" and wait for the customer's reply.
++- Do not treat the engagement's general authorization as approval to install software. Proceed only when the customer explicitly approves that specific plan. A refusal or unclear reply means do not install; continue with an available alternative or report the limitation.
++- Third-party tools outside Kali are allowed when the customer approves the exact source and installation plan. Do not silently substitute a different download, repository, package, or command after approval; ask again if the plan changes.
++- After explicit approval, delegate the unchanged plan to the Installer and include the user's approval in the task context. If asking the user is unavailable, do not install; report the plan and limitation.
+ - When you receive information from the customer via "{{.AskUserToolName}}", you MUST include it in your final report
+ - ALL information obtained from customer interactions MUST be incorporated into the result delivered via "{{.FinalyToolName}}"
+ - Customer-provided information is critical context that must be preserved and communicated in your subtask completion report
+diff --git a/backend/pkg/templates/templates.go b/backend/pkg/templates/templates.go
+index 09e1da3..8b308a5 100644
+--- a/backend/pkg/templates/templates.go
++++ b/backend/pkg/templates/templates.go
+@@ -179,6 +179,7 @@ var PromptVariables = map[PromptType][]string{
+ 	},
+ 	PromptTypeInstaller: {
+ 		"MaintenanceResultToolName",
++		"PersistWorkerImageToolName",
+ 		"SearchGuideToolName",
+ 		"StoreGuideToolName",
+ 		"SearchToolName",
+diff --git a/backend/pkg/tools/args.go b/backend/pkg/tools/args.go
+index 669a4ac..f54c4e9 100644
+--- a/backend/pkg/tools/args.go
++++ b/backend/pkg/tools/args.go
+@@ -176,6 +176,11 @@ type AskUser struct {
+ 	Message string `json:"message" jsonschema:"required,title=Question for user" jsonschema_description:"Engagement-log entry — clarification question or any other information addressed to the engagement coordinator. Written in the engagement language declared by your system prompt."`
+ }
+ 
++type PersistWorkerImageAction struct {
++	Reason  string `json:"reason" jsonschema:"required,title=Reason for saving worker image" jsonschema_description:"Briefly describe the approved tools or dependencies installed in this worker and why they should be available to later tasks."`
++	Message string `json:"message" jsonschema:"required,title=Image save message" jsonschema_description:"Engagement-log entry — describe the reusable worker image update."`
++}
++
+ type Done struct {
+ 	// Success is a pointer for the reason TaskResult.Success is.
+ 	Success *Bool  `json:"success" jsonschema:"title=Execution result,type=boolean" jsonschema_description:"True if the subtask was executed successfully and its objective was reached"`
+diff --git a/backend/pkg/tools/fixtures_test.go b/backend/pkg/tools/fixtures_test.go
+index 6d5362c..b36f6bb 100644
+--- a/backend/pkg/tools/fixtures_test.go
++++ b/backend/pkg/tools/fixtures_test.go
+@@ -140,6 +140,13 @@ type fakeDockerClient struct {
+ 	writtenContent string            // the first regular file of the last archive copied in
+ 	removed        []dockerRemoval
+ 	launches       []dockerLaunch
++	imageCommits   []workerImageCommit
++}
++
++type workerImageCommit struct {
++	containerID string
++	image       string
++	comment     string
+ }
+ 
+ var _ docker.DockerClient = (*fakeDockerClient)(nil)
+@@ -309,6 +316,19 @@ func (d *fakeDockerClient) CopyFromContainer(context.Context, string, string) (i
+ 
+ func (d *fakeDockerClient) Cleanup(context.Context) error { return nil }
+ func (d *fakeDockerClient) GetDefaultImage() string       { return "test-image" }
++func (d *fakeDockerClient) CommitWorkerImage(
++	ctx context.Context, containerID, image, comment string,
++) error {
++	if err := ctx.Err(); err != nil {
++		return err
++	}
++	d.imageCommits = append(d.imageCommits, workerImageCommit{
++		containerID: containerID,
++		image:       image,
++		comment:     comment,
++	})
++	return nil
++}
+ 
+ // dockerReadChunk is the most one Read of a container archive returns, as a socket read does.
+ const dockerReadChunk = 4096
+diff --git a/backend/pkg/tools/registry.go b/backend/pkg/tools/registry.go
+index 70f5adc..424f70b 100644
+--- a/backend/pkg/tools/registry.go
++++ b/backend/pkg/tools/registry.go
+@@ -11,6 +11,7 @@ import (
+ const (
+ 	FinalyToolName             = "done"
+ 	AskUserToolName            = "ask"
++	PersistWorkerImageToolName = "persist_worker_image"
+ 	MaintenanceToolName        = "maintenance"
+ 	MaintenanceResultToolName  = "maintenance_result"
+ 	CoderToolName              = "coder"
+@@ -98,6 +99,7 @@ func GetToolType(name string) ToolType {
+ var toolsTypeMapping = map[string]ToolType{
+ 	FinalyToolName:             BarrierToolType,
+ 	AskUserToolName:            BarrierToolType,
++	PersistWorkerImageToolName: EnvironmentToolType,
+ 	MaintenanceToolName:        AgentToolType,
+ 	MaintenanceResultToolName:  StoreAgentResultToolType,
+ 	CoderToolName:              AgentToolType,
+@@ -405,6 +407,11 @@ var registryDefinitions = map[string]llms.FunctionDefinition{
+ 		Description: "If you need to ask user for input, use this tool",
+ 		Parameters:  reflector.Reflect(&AskUser{}),
+ 	},
++	PersistWorkerImageToolName: {
++		Name:        PersistWorkerImageToolName,
++		Description: "After completing an installation explicitly approved by the user, save the current local Kali worker image so the installed tools are reusable by later tasks. This saves the worker's filesystem changes, not the host.",
++		Parameters:  reflector.Reflect(&PersistWorkerImageAction{}),
++	},
+ 	FinalyToolName: {
+ 		Name:        FinalyToolName,
+ 		Description: "If you need to finish the task with success or failure, use this tool",
+diff --git a/backend/pkg/tools/registry_test.go b/backend/pkg/tools/registry_test.go
+index ca9ea1f..a48d6ee 100644
+--- a/backend/pkg/tools/registry_test.go
++++ b/backend/pkg/tools/registry_test.go
+@@ -46,6 +46,7 @@ func TestRegistry_GetToolType_ClassifiesEachTool(t *testing.T) {
+ 	}{
+ 		{name: "the terminal acts on the environment", toolName: TerminalToolName, want: EnvironmentToolType},
+ 		{name: "the file tool acts on the environment", toolName: FileToolName, want: EnvironmentToolType},
++		{name: "persisting an approved worker image acts on the environment", toolName: PersistWorkerImageToolName, want: EnvironmentToolType},
+ 		{name: "google searches the network", toolName: GoogleToolName, want: SearchNetworkToolType},
+ 		{name: "duckduckgo searches the network", toolName: DuckDuckGoToolName, want: SearchNetworkToolType},
+ 		{name: "tavily searches the network", toolName: TavilyToolName, want: SearchNetworkToolType},
+diff --git a/backend/pkg/tools/tools.go b/backend/pkg/tools/tools.go
+index eafd0c7..c096036 100644
+--- a/backend/pkg/tools/tools.go
++++ b/backend/pkg/tools/tools.go
+@@ -1119,6 +1119,7 @@ func (fte *flowToolsExecutor) GetInstallerExecutor(cfg InstallerExecutorConfig)
+ 			registryDefinitions[SearchToolName],
+ 			registryDefinitions[TerminalToolName],
+ 			registryDefinitions[FileToolName],
++			registryDefinitions[PersistWorkerImageToolName],
+ 		},
+ 		handlers: map[string]ExecutorHandler{
+ 			MaintenanceResultToolName: cfg.MaintenanceResult,
+@@ -1127,6 +1128,25 @@ func (fte *flowToolsExecutor) GetInstallerExecutor(cfg InstallerExecutorConfig)
+ 			SearchToolName:            cfg.Searcher,
+ 			TerminalToolName:          term.Handle,
+ 			FileToolName:              term.Handle,
++			PersistWorkerImageToolName: func(ctx context.Context, _ string, args json.RawMessage) (string, error) {
++				var action PersistWorkerImageAction
++				if err := json.Unmarshal(args, &action); err != nil {
++					return "", fmt.Errorf("failed to parse %s arguments: %w", PersistWorkerImageToolName, err)
++				}
++				if strings.TrimSpace(action.Reason) == "" {
++					return "", fmt.Errorf("a reason is required to persist the worker image")
++				}
++				if !strings.HasPrefix(fte.image, "pentagi-local/kali-tools:") {
++					return "", fmt.Errorf("worker image %q is not a local reusable Kali image; refusing to replace it", fte.image)
++				}
++				if fte.primaryLID == "" {
++					return "", fmt.Errorf("the active worker container is unavailable")
++				}
++				if err := fte.docker.CommitWorkerImage(ctx, fte.primaryLID, fte.image, action.Reason); err != nil {
++					return "", fmt.Errorf("failed to save reusable worker image: %w", err)
++				}
++				return fmt.Sprintf("Saved approved worker changes to reusable image %s.", fte.image), nil
++			},
+ 		},
+ 		barriers: map[string]struct{}{
+ 			MaintenanceResultToolName: {},
+diff --git a/backend/pkg/tools/tools_test.go b/backend/pkg/tools/tools_test.go
+index 32fbb38..d17660a 100644
+--- a/backend/pkg/tools/tools_test.go
++++ b/backend/pkg/tools/tools_test.go
+@@ -646,7 +646,7 @@ func toolsAgentExecutorCases() ([]toolsAgentExecutorCase, func(ExecutorHandler)
+ 			},
+ 			tools: map[string]string{
+ 				"maintenance_result": "MaintenanceResult", "advice": "Adviser", "memorist": "Memorist", "search": "Searcher",
+-				"terminal": "", "file": "", "browser": "", "store_guide": "", "search_guide": "",
++				"terminal": "", "file": "", "persist_worker_image": "", "browser": "", "store_guide": "", "search_guide": "",
+ 			},
+ 			optional: []string{"browser", "store_guide", "search_guide"},
+ 			barriers: []string{"maintenance_result"},
+@@ -896,6 +896,41 @@ func TestTools_GetExecutors_GiveEachAgentItsTools(t *testing.T) {
+ 	}
+ }
+ 
++func TestInstallerExecutor_PersistsOnlyLocalReusableWorkerImages(t *testing.T) {
++	fte := toolsAgentFlow(t, false)
++	fte.image = "pentagi-local/kali-tools:approved"
++	fte.primaryLID = "worker-local-id"
++
++	handler := func(context.Context, string, json.RawMessage) (string, error) {
++		return "ok", nil
++	}
++	executor, err := fte.GetInstallerExecutor(InstallerExecutorConfig{
++		MaintenanceResult: handler,
++		Adviser:           handler,
++		Memorist:          handler,
++		Searcher:          handler,
++	})
++	require.NoError(t, err)
++	ce := executor.(*customExecutor)
++	args, err := json.Marshal(PersistWorkerImageAction{Reason: "approved tool installation"})
++	require.NoError(t, err)
++
++	result, err := ce.handlers[PersistWorkerImageToolName](context.Background(), PersistWorkerImageToolName, args)
++	require.NoError(t, err)
++	assert.Contains(t, result, fte.image)
++	dockerClient := fte.docker.(*fakeDockerClient)
++	require.Equal(t, []workerImageCommit{{
++		containerID: "worker-local-id",
++		image:       "pentagi-local/kali-tools:approved",
++		comment:     "approved tool installation",
++	}}, dockerClient.imageCommits)
++
++	fte.image = "vxcontrol/kali-linux:latest"
++	_, err = ce.handlers[PersistWorkerImageToolName](context.Background(), PersistWorkerImageToolName, args)
++	require.ErrorContains(t, err, "not a local reusable Kali image")
++	assert.Len(t, dockerClient.imageCommits, 1)
++}
++
+ // Covers the Get*Executor factories; subtests are keyed by factory. The terminal log carries the agent's task and subtask.
+ func TestTools_GetExecutors_BindTheTerminalToTheFlowSandbox(t *testing.T) {
+ 	cases, _ := toolsAgentExecutorCases()

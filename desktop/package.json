@@ -50,6 +50,14 @@
         "to": "docker-compose.llama.yml"
       },
       {
+        "from": "../docker-compose.pentagi-local.yml",
+        "to": "docker-compose.pentagi-local.yml"
+      },
+      {
+        "from": "../patches",
+        "to": "patches"
+      },
+      {
         "from": "../config",
         "to": "config"
       },

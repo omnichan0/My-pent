@@ -59,8 +59,20 @@ test("release workflow uploads only installer files, not build directories", () 
 
 test("end-user bootstrap resources are bundled into desktop releases", () => {
   const resourceNames = manifest.build.extraResources.map((entry) => entry.to);
+  const shellBootstrap = fs.readFileSync(path.resolve(root, "../quick-start.sh"), "utf8");
+  const windowsBootstrap = fs.readFileSync(path.resolve(root, "../quick-start.ps1"), "utf8");
+
   assert.ok(resourceNames.includes("quick-start.ps1"));
   assert.ok(resourceNames.includes("quick-start.sh"));
   assert.ok(resourceNames.includes("docker-compose.llama.yml"));
+  assert.ok(resourceNames.includes("docker-compose.pentagi-local.yml"));
+  assert.ok(resourceNames.includes("patches"));
+  assert.ok(fs.existsSync(path.resolve(root, "../docker-compose.pentagi-local.yml")));
+  assert.ok(fs.existsSync(path.resolve(root, "../patches/pentagi-worker-install.patch")));
+  for (const bootstrap of [shellBootstrap, windowsBootstrap]) {
+    assert.match(bootstrap, /pentagi-worker-install\.patch/);
+    assert.match(bootstrap, /docker-compose\.pentagi-local\.yml/);
+    assert.match(bootstrap, /ASK_USER=true/);
+  }
   assert.ok(manifest.build.files.includes("assets/*.svg"));
 });

@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const {
   FULL_KALI_IMAGE,
   KALI_BASE,
+  PERSISTENT_KALI_IMAGE,
   SYSTEMD_KALI_IMAGE,
   TOOL_CATALOG,
   dockerfileForPackages,
@@ -50,6 +51,11 @@ test("full toolbox plans a reusable image with the Kali full-suite metapackage",
   const plan = toolsetPlan("full", [], 64, 300);
   assert.equal(plan.image, FULL_KALI_IMAGE);
   assert.deepEqual(plan.packages, ["kali-linux-everything"]);
+});
+
+test("worker persistence always targets a private local image tag", () => {
+  assert.equal(PERSISTENT_KALI_IMAGE, "pentagi-local/kali-tools:approved");
+  assert.match(PERSISTENT_KALI_IMAGE, /^pentagi-local\//);
 });
 
 test("custom toolbox only accepts catalog entries and removes duplicate selections", () => {
