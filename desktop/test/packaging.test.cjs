@@ -53,6 +53,8 @@ test("release workflow uploads only installer files, not build directories", () 
   assert.match(workflow, /desktop\/dist\/\*\.AppImage/);
   assert.match(workflow, /desktop\/dist\/\*\.deb/);
   assert.match(workflow, /path: \$\{\{ matrix\.files \}\}/);
+  assert.match(workflow, /--notes-file \.github\/RELEASE_NOTES\.md/);
+  assert.match(workflow, /--title "PentAGI Local v\$release_version"/);
 });
 
 test("end-user bootstrap resources are bundled into desktop releases", () => {

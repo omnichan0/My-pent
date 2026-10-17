@@ -78,6 +78,8 @@ menu:
   in Docker, not installed on the host. The full metapackage can take
   substantially more disk space; Docker Desktop's virtual disk capacity can
   differ from the host free-space estimate.
+- See [Worker profiles and capabilities](#worker-profiles-and-capabilities)
+  for a quick guide to the tools and resource tradeoffs in each choice.
 - Windows and macOS may show an operating-system warning because release
   installers are not yet signed/notarized. Only install releases linked from
   this repository. The local model weights are downloaded and checksum-verified
@@ -107,6 +109,45 @@ The desktop app's **Stop services** control stops containers without deleting
 the runtime files or Docker volumes. The **View logs** control displays recent
 service output. Generated credentials and model files stay in the app's local
 data directory and are not included in Git or the app installer.
+
+## Worker profiles and capabilities
+
+PentAGI is an AI-assisted penetration-testing workspace. Its Kali worker
+profiles provide a broad toolkit for authorized security assessments; they are
+different sizes of reusable Docker worker image, not different Kali operating
+systems installed on your computer.
+
+- **Lean curated Kali (recommended):** the maintained upstream image with 200+
+  command-line security tools. Examples span host and service discovery
+  (Nmap, Masscan), web testing (Nuclei, Nikto, FFUF, SQLmap), DNS and
+  reconnaissance (Amass, Subfinder), password auditing (John, Hashcat),
+  exploitation and Windows-network testing (Metasploit, Impacket, NetExec),
+  traffic analysis (TShark, tcpdump), and binary analysis (Binwalk, Radare2).
+  It is the practical starting point for most machines, but the image itself
+  is still about 6 GB or more.
+- **Curated Kali + systemd:** the same curated tools with systemd support for
+  tools that need to start or manage services inside the worker.
+- **Curated Kali + chosen add-ons:** install a reusable image with the
+  selected packages below, in addition to the curated base. This lets you
+  tailor the environment, but it still downloads the roughly 6 GB base:
+  `dnsenum` (DNS enumeration), `enum4linux-ng` (Windows/SMB enumeration),
+  `testssl.sh` (TLS configuration checks), `net-snmp` (SNMP discovery and
+  queries), `recon-ng` (modular reconnaissance), and `zmap` (network
+  measurement and scanning).
+- **Full Kali suite:** builds a reusable image with the `kali-linux-everything`
+  metapackage. It is very large and is offered only when the app detects at
+  least 32 GB RAM and 100 GB free disk. The app recommends the curated profile
+  on less capable systems; the full suite can use substantially more storage
+  than the initial estimate while building and updating.
+
+PentAGI's capability depends on the worker tools, the authorized target and
+scope, and the instructions you give the AI. Clear, bounded prompts and
+security expertise help; AI output is not proof that a finding is real or
+that an action is safe. Review plans and results, validate findings yourself,
+and keep testing within written authorization. Worker containers can make
+outbound network connections, and Docker socket access is effectively
+host-level privilege; use an isolated machine and never expose this setup to
+the public internet.
 
 ## What's configured
 
